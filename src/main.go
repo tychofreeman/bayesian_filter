@@ -24,6 +24,5 @@ func main() {
 	for _, t := range t.Data {
 		b.Add(&BayesianTweet{t, "Grinnell"})
 	}
-	b.Learn()
 	b.PrintWordProbs()
 }

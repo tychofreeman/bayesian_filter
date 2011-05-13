@@ -5,23 +5,16 @@ import s "strings"
 import u "unicode"
 import "big"
 
-type division struct {
-	numWhenIs int64
-	numWhenNotIs int64
-	msgsWithWord int64
-	grinnellMsgsWithWord int64
-	probKAppears *big.Rat
-	probKAppearsWhenIsGrinnell *big.Rat
+type wordStats struct {
+	countB int64
+	countAWithB int64
 	probAWhenB *big.Rat
 }
 
 type Bayesian struct {
-	totalWords int64
-	totalWordsWhenIsGrinnell int64
-	totalMsgs int64
-	totalMsgsWhenIsGrinnell int64
-	probIsGrinnell *big.Rat
-	appearances map[string]*division
+	totalCount int64
+	countA int64
+	words map[string]*wordStats
 }
 
 func lowerTrim(word string) string {
@@ -42,64 +35,58 @@ func shouldIgnore(word string) bool {
 		"it's": true,
 		"on": true,
 		"upon": true,
+		"the": true,
 	}[word]
 }
 
 func (b *Bayesian) Add(data Data) {
 	words := data.GetWords()
-	b.totalMsgs++
+	b.totalCount++
 	if data.Is() {
-		b.totalMsgsWhenIsGrinnell++
+		b.countA++
 	}
-	if b.appearances == nil {
-		b.appearances = map[string]*division{}
+	if b.words == nil {
+		b.words = map[string]*wordStats{}
 	}
 	uniqueWords := make(map[string]bool)
 	for _, rawWord := range words {
 		w := lowerTrim(rawWord)
 		if shouldIgnore(w) {
-			break
+			continue
 		}
-		b.totalWords++
-		d, err := b.appearances[w]
-		if err == false {
-			d = new(division)
-			b.appearances[w] = d
+
+		d, exists := b.words[w]
+		if exists == false {
+			d = new(wordStats)
+			b.words[w] = d
 
 		}
 		if _, defd := uniqueWords[w]; defd == false {
-			d.msgsWithWord++
+			d.countB++
 			if  data.Is() {
-				d.grinnellMsgsWithWord++
+				d.countAWithB++
 			}
-		}
-		if data.Is() {
-			d.numWhenIs++
-			b.totalWordsWhenIsGrinnell++
-		} else {
-			d.numWhenNotIs++
 		}
 		uniqueWords[w] = true
 	}
 }
 
-func (b *Bayesian) Learn() {
-	b.probIsGrinnell = big.NewRat(b.totalMsgsWhenIsGrinnell, b.totalMsgs)
-	for k, v := range b.appearances {
-		probKAppears := big.NewRat(v.numWhenIs, v.numWhenIs + v.numWhenNotIs)
-		probIsGrinnellWhenKAppears := big.NewRat(v.grinnellMsgsWithWord, v.msgsWithWord)
-		br := &BayesRule{probIsGrinnellWhenKAppears, probKAppears, b.probIsGrinnell}
-		v.probAWhenB = br.Calculate()
-		fmt.Printf("\t%v - %v = (%v*%v)/%v\n", k, v.probAWhenB, probIsGrinnellWhenKAppears, probKAppears, b.probIsGrinnell)
-	}
+func (b *Bayesian) ProbAWhenB(word string) *big.Rat{
+	probA := big.NewRat(b.countA, b.totalCount)
+	v := b.words[word]
+	probBWhenA := big.NewRat(v.countAWithB, b.countA)
+	probB := big.NewRat(v.countB, b.totalCount)
+	br := &BayesRule{probBWhenA, probA, probB}
+	probAWhenB := br.Calculate()
+	return probAWhenB
 }
 
 func (b *Bayesian) PrintWordProbs() {
 	fmt.Printf("Words:\n")
-	fmt.Printf("Prob Is? %v\n", b.probIsGrinnell)
-	for k, v := range b.appearances {
-		if v.numWhenIs > 0 {
-			fmt.Printf("%v - %v\n", k, v.probAWhenB)
+	for k := range b.words {
+		probAWhenB := b.ProbAWhenB(k)
+		if probAWhenB.Num().Int64() > 0 {
+			fmt.Printf("%v - %v\n", k, probAWhenB)
 		}
 	}
 }
@@ -108,7 +95,7 @@ func (b *Bayesian) Filter(data Data, threshold *big.Rat) bool {
 	total := big.NewRat(1, 1)
 	for _, word := range data.GetWords() {
 		w := lowerTrim(word)
-		v, has := b.appearances[w]
+		v, has := b.words[w]
 		if has {
 			total = total.Mul(total, v.probAWhenB)
 		}
