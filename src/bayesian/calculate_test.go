@@ -9,11 +9,16 @@ func TestCalculateProbOfStudentIsGirlWhenStudentWearsPants(t *T) {
 	probRandomStudentIsGirl := NewRat(2, 5)
 	probRandomStudentIsBoy := NewRat(1, 1).Sub(NewRat(1, 1), probRandomStudentIsGirl)
 	probBoysWearPants := NewRat(1, 1)
+
+	probRandomStudentIsGirlWearingPants := NewRat(1, 1).Mul(probGirlsWearPants, probRandomStudentIsGirl)
+	probRandomStudentIsBoyWearingPants := NewRat(1, 1).Mul(probRandomStudentIsBoy, probBoysWearPants)
+
 	// This should be .8, but I'd like to calculate it instead of defining it...
-	probRandomStudentWearsPants := NewRat(1, 1).Add(NewRat(1, 1).Mul(probGirlsWearPants, probRandomStudentIsGirl), NewRat(1, 1).Mul(probRandomStudentIsBoy, probBoysWearPants))
+	probRandomStudentWearsPants :=
+		NewRat(1, 1).Add(probRandomStudentIsGirlWearingPants, probRandomStudentIsBoyWearingPants)
 
-
-	probRandomStudentIsGirlIfStudentIsWearingPants := (&BayesRule{probGirlsWearPants, probRandomStudentIsGirl, probRandomStudentWearsPants}).Calculate()
+	probRandomStudentIsGirlIfStudentIsWearingPants :=
+		&BayesRule{probGirlsWearPants, probRandomStudentIsGirl, probRandomStudentWearsPants}.Calculate()
 
 	expected := NewRat(1, 4)
 	if probRandomStudentIsGirlIfStudentIsWearingPants.Cmp(expected) != 0 {
