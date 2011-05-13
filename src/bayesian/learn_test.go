@@ -1,7 +1,10 @@
 package bayesian
 
-import . "testing"
-import "big"
+import (
+	. "testing"
+	"big"
+	"strings"
+)
 
 
 type Tweet struct {
@@ -43,6 +46,36 @@ func TestTweets(t *T) {
 	assertProb(t, b, big.NewRat(1, 9), "one")
 	assertProb(t, b, big.NewRat(1, 3), "four")
 	assertProb(t, b, big.NewRat(1, 2), "other")
+}
+
+var always = big.NewRat(1, 1)
+var usually = big.NewRat(2, 3)
+var mostly = big.NewRat(1, 2)
+var sometimes = big.NewRat(1, 3)
+var never = big.NewRat(0, 1)
+
+func makeTweet(text string) Tweet {
+	return Tweet{strings.Fields(text), false}
+}
+
+func TestFilter(t *T) {
+	b := makeTweets()
+
+	assertFilters(t, b, makeTweet("grinnell has a president"), always)
+	assertNotFilters(t, b, makeTweet("five six seven"), sometimes)
+	assertFilters(t, b, makeTweet("one four"), sometimes)
+}
+
+func assertFilters(t *T, b *Bayesian, data Data, expected *big.Rat) {
+	assertFilterPred(t, b, data, expected, true)
+}
+func assertNotFilters(t *T, b *Bayesian, data Data, expected *big.Rat) {
+	assertFilterPred(t, b, data, expected, false)
+}
+func assertFilterPred(t *T, b *Bayesian, data Data, expected *big.Rat, pred bool) {
+	if pred != b.Filter(data, expected) {
+		t.Errorf("Data [%v] expected to filter at or above %v, but did not.\n", data, expected)
+	}
 }
 
 func assertProb(t *T, b *Bayesian, expected *big.Rat, word string) {

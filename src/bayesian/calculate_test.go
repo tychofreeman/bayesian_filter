@@ -18,7 +18,7 @@ func TestCalculateProbOfStudentIsGirlWhenStudentWearsPants(t *T) {
 		NewRat(1, 1).Add(probRandomStudentIsGirlWearingPants, probRandomStudentIsBoyWearingPants)
 
 	probRandomStudentIsGirlIfStudentIsWearingPants :=
-		&BayesRule{probGirlsWearPants, probRandomStudentIsGirl, probRandomStudentWearsPants}.Calculate()
+		(&BayesRule{probGirlsWearPants, probRandomStudentIsGirl, probRandomStudentWearsPants}).Calculate()
 
 	expected := NewRat(1, 4)
 	if probRandomStudentIsGirlIfStudentIsWearingPants.Cmp(expected) != 0 {

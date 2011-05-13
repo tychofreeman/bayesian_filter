@@ -95,12 +95,15 @@ func (b *Bayesian) Filter(data Data, threshold *big.Rat) bool {
 	total := big.NewRat(1, 1)
 	for _, word := range data.GetWords() {
 		w := lowerTrim(word)
-		v, has := b.words[w]
+		_, has := b.words[w]
 		if has {
-			total = total.Mul(total, v.probAWhenB)
+			probAWhenB := b.ProbAWhenB(word)
+			one := big.NewRat(1, 1)
+			total = total.Mul(total, one.Sub(one, probAWhenB))
 		}
 
 	}
-
-	return total.Cmp(threshold) >= 0
+	one := big.NewRat(1, 1)
+	inverseThreshold := one.Sub(one, threshold)
+	return total.Cmp(inverseThreshold) <= 0
 }
